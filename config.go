@@ -60,6 +60,12 @@ type TCPClientTunnelConfig struct {
 	Target      string
 }
 
+type UDPProxyTunnelConfig struct {
+	BindAddress       string
+	Target            string
+	InactivityTimeout int
+}
+
 type STDIOTunnelConfig struct {
 	Target string
 }
@@ -511,6 +517,34 @@ func ParseASecConfig(section *ini.Section) (*ASecConfigType, error) {
 	return aSecConfig, nil
 }
 
+func parseUDPProxyTunnelConfig(section *ini.Section) (RoutineSpawner, error) {
+	config := &UDPProxyTunnelConfig{}
+
+	bindAddress, err := parseString(section, "BindAddress")
+	if err != nil {
+		return nil, err
+	}
+	config.BindAddress = bindAddress
+
+	target, err := parseString(section, "Target")
+	if err != nil {
+		return nil, err
+	}
+	config.Target = target
+
+	inactivityTimeout := 0
+	if sectionKey, err := section.GetKey("InactivityTimeout"); err == nil {
+		timeoutVal, err := sectionKey.Int()
+		if err != nil {
+			return nil, err
+		}
+		inactivityTimeout = timeoutVal
+	}
+	config.InactivityTimeout = inactivityTimeout
+
+	return config, nil
+}
+
 func ValidateASecConfig(config *ASecConfigType) error {
 	if config == nil {
 		return nil
@@ -765,6 +799,11 @@ func ParseConfig(path string) (*Configuration, error) {
 	}
 
 	err = parseRoutinesConfig(&routinesSpawners, cfg, "http", parseHTTPConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	err = parseRoutinesConfig(&routinesSpawners, cfg, "UDPProxyTunnel", parseUDPProxyTunnelConfig)
 	if err != nil {
 		return nil, err
 	}
